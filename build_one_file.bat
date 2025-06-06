@@ -7,6 +7,6 @@ pyinstaller --onefile --windowed --icon=logo.ico ^
 --add-data "src/toggle_button_on.png;./src" ^
 --add-data "src/toggle_button_off.png;./src" ^
 --add-data "logo.ico;./" ^
---name "R.E.P.O ModManager" mod_manager.py
+--name "R.E.P.O Mod Manager" mod_manager.py
 
 pause

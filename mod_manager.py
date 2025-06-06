@@ -21,7 +21,7 @@ CREATION_FLAGS = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 MODPACK_REPOSITORY_URL = "https://github.com/furkanaliunal/R.E.P.O-Modpack.git"
 MODLOADER_REPOSITORY_URL = "https://github.com/furkanaliunal/R.E.P.O-Modloader.git"
-CURRENT_VERSION_URL = "https://github.com/furkanaliunal/R.E.P.O-Modloader/releases/download/Release-0.4_HotFix2/Lethal.Mod.Manager.exe"
+CURRENT_VERSION_URL = "https://github.com/furkanaliunal/R.E.P.O-Modloader/releases/download/Release-0.5.1/R.E.P.O.Mod.Manager.exe"
 UPDATE_CHECK_URL = "https://api.github.com/repos/furkanaliunal/R.E.P.O-Modloader/releases/latest"
 STEAM_APP_ID = "3241660"
 
@@ -416,6 +416,8 @@ class App(tk.Tk):
             subprocess.run(["git", "reset", "--hard", "origin/main"], shell=False, creationflags=CREATION_FLAGS)
             subprocess.run(["git", "clean", "-fd"], shell=False, creationflags=CREATION_FLAGS)
             subprocess.run(["git", "checkout", "main"], shell=False, creationflags=CREATION_FLAGS)
+            time.sleep(0.2)
+            subprocess.run(["git", "pull"], shell=False, creationflags=CREATION_FLAGS)
         else:
             self.toggle_button.config(image=self.closed_photo)
             self.write_to_text_area(MSG["mod_pack_deactivated"], "red")
@@ -424,6 +426,8 @@ class App(tk.Tk):
             subprocess.run(["git", "reset", "--hard", "origin/main"], shell=False, creationflags=CREATION_FLAGS)
             subprocess.run(["git", "clean", "-fd"], shell=False, creationflags=CREATION_FLAGS)
             subprocess.run(["git", "checkout", "nomod"], shell=False, creationflags=CREATION_FLAGS)
+            time.sleep(0.2)
+            subprocess.run(["git", "pull"], shell=False, creationflags=CREATION_FLAGS)
         self.toggle_button.config(state="active")
 
     def open_game_folder(self):
@@ -787,6 +791,9 @@ class App(tk.Tk):
 
     def print_modpack_update_status(self):
         self.write_to_text_area_from_async(MSG["modpack_update_checking"])
+        if self.toggle_state == False:
+            self.write_to_text_area_from_async(MSG["mod_pack_deactivated"], "red")
+            return
         if self.check_for_modpack_updates():
             self.write_to_text_area_from_async(MSG["modpack_update_available"])
             self.write_to_text_area_from_async(MSG["modpack_update_download"], "green")

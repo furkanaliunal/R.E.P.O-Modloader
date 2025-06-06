@@ -6,7 +6,7 @@ import subprocess
 import winreg
 import locale
 import tkinter as tk
-from tkinter import scrolledtext, messagebox
+from tkinter import scrolledtext, messagebox, filedialog
 from PIL import Image, ImageTk
 import threading
 import time
@@ -16,35 +16,13 @@ import configparser
 
 CREATION_FLAGS = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
-def check_git():
-    try:
-        subprocess.run(["git", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, creationflags=CREATION_FLAGS)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
-
-def install_git():
-    process = subprocess.Popen(
-        'cmd.exe /c start /wait cmd.exe /c "winget install --id Git.Git -e --source winget"',
-        shell=False
-    )
-    process.wait()
-
-if not check_git():
-    install_git()
-
-os.environ["GIT_PYTHON_GIT_EXECUTABLE"] = r"C:\\Program Files\\Git\bin\\git.exe"
-
-
-
 
 # region CONFIG
 
 MODPACK_REPOSITORY_URL = "https://github.com/furkanaliunal/R.E.P.O-Modpack.git"
-
-MODLOADER_REPOSITORY_URL = "https://github.com/furkanaliunal/lethal-company-modloader.git"
-CURRENT_VERSION_URL = "https://github.com/furkanaliunal/Lethal-Company-Modloader/releases/download/Release-0.4_HotFix2/Lethal.Mod.Manager.exe"
-UPDATE_CHECK_URL = "https://api.github.com/repos/furkanaliunal/Lethal-Company-Modloader/releases/latest"
+MODLOADER_REPOSITORY_URL = "https://github.com/furkanaliunal/R.E.P.O-Modloader.git"
+CURRENT_VERSION_URL = "https://github.com/furkanaliunal/R.E.P.O-Modloader/releases/download/Release-0.4_HotFix2/Lethal.Mod.Manager.exe"
+UPDATE_CHECK_URL = "https://api.github.com/repos/furkanaliunal/R.E.P.O-Modloader/releases/latest"
 STEAM_APP_ID = "3241660"
 
 
@@ -90,6 +68,12 @@ MESSAGES = {
         "settings" : "Ayarlar",
         "save" : "Kaydet",
         "cancel" : "Vazgeç",
+        "select_game_manual_prompt": "Oyun dizini bulunamadı. Lütfen manuel olarak seçin.",
+        "select_game_folder_dialog_title": "Oyun Klasörünü Seçin",
+        "invalid_directory_selected": "Seçilen klasörde '{}' bulunamadı.",
+        "game_path_saved_success": "Oyun dizini başarıyla kaydedildi.",
+        "game_path_save_error": "Registry kaydedilirken bir hata oluştu:\n{}",
+        "git_restart_required": "Git başarıyla yüklendi.\nUygulamayı yeniden başlatın.",
 
     },
     "en": {
@@ -132,6 +116,12 @@ MESSAGES = {
         "settings" : "Settings",
         "save" : "Save",
         "cancel" : "Cancel",
+        "select_game_manual_prompt": "Game directory not found. Please select it manually.",
+        "select_game_folder_dialog_title": "Select Game Folder",
+        "invalid_directory_selected": "'{}' not found in the selected folder.",
+        "game_path_saved_success": "Game path successfully saved.",
+        "game_path_save_error": "An error occurred while saving to registry:\n{}",
+        "git_restart_required": "Git installed successfully.\nPlease restart the application.",
 
     },
     "nl": {
@@ -174,6 +164,12 @@ MESSAGES = {
         "settings" : "Instellingen",
         "save" : "Opslaan",
         "cancel" : "Annuleren",
+        "select_game_manual_prompt": "Spelmap niet gevonden. Selecteer deze handmatig.",
+        "select_game_folder_dialog_title": "Selecteer Spelmap",
+        "invalid_directory_selected": "'{}' niet gevonden in de geselecteerde map.",
+        "game_path_saved_success": "Spelpad succesvol opgeslagen.",
+        "game_path_save_error": "Er is een fout opgetreden bij het opslaan in het register:\n{}",
+        "git_restart_required": "Git is succesvol geïnstalleerd.\nHerstart de applicatie.",
 
     }
 }
@@ -261,6 +257,42 @@ LANG = get_system_language()
 MSG = MESSAGES[LANG]
 APP = None
 
+def check_git():
+    try:
+        result = subprocess.run(["git", "--version"], capture_output=True, text=True, check=True)
+        return True
+    except FileNotFoundError:
+        return False
+    except subprocess.CalledProcessError as e:
+        return False
+
+def install_git():
+    winget_path = shutil.which("winget")
+    if not winget_path:
+        return False
+    try:
+        process = subprocess.run(
+            ["winget", "install", "--id", "Git.Git", "-e", "--source", "winget"],
+            check=True
+        )
+        return True
+    except subprocess.CalledProcessError as e:
+        return False
+
+def ensure_git_installed():
+    if not check_git():
+        success = install_git()
+        messagebox.showinfo("GIT", MSG["git_restart_required"])
+        os._exit(0)
+        if success:
+            return check_git()
+        else:
+            return False
+    return True
+
+ensure_git_installed()
+os.environ["GIT_PYTHON_GIT_EXECUTABLE"] = r"C:\\Program Files\\Git\bin\\git.exe"
+
 
 
 # region APPLICATION
@@ -274,7 +306,13 @@ class App(tk.Tk):
         self.build_gui()
 
     def init_variables(self):
-        self.game_path, self.game_exe_path = self.find_game_directory(with_exe_path=True)
+        try:
+            self.game_path, self.game_exe_path = self.find_game_directory(with_exe_path=True)
+        except TypeError:
+            self.select_game_directory()
+            self.game_path, self.game_exe_path = self.find_game_directory(with_exe_path=True)
+
+
         if self.game_path is not None:
             self.is_git_installed = check_git()
             self.is_repository_installed = os.path.exists(os.path.join(self.game_path, ".git"))
@@ -567,6 +605,28 @@ class App(tk.Tk):
 
         thread = threading.Thread(target=self.install_external_mods, daemon=True).start()
 
+    def select_game_directory(self):
+        messagebox.showinfo(MSG["app_title"], MSG["select_game_manual_prompt"])
+        
+        selected_dir = filedialog.askdirectory(title=MSG["select_game_folder_dialog_title"])
+        exe_name = "REPO.exe"
+        exe_path = os.path.join(selected_dir, exe_name)
+
+        if not os.path.exists(exe_path):
+            messagebox.showerror(MSG["app_title"], MSG["invalid_directory_selected"].format(exe_name))
+            self.select_game_directory()
+            return
+
+        try:
+            reg_path = r"System\GameConfigStore\Children\FurkiREPO"
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, reg_path) as key:
+                winreg.SetValueEx(key, "ExeParentDirectory", 0, winreg.REG_SZ, selected_dir)
+                winreg.SetValueEx(key, "MatchedExeFullPath", 0, winreg.REG_SZ, exe_path)
+            messagebox.showinfo(MSG["app_title"], MSG["game_path_saved_success"])
+            return True
+        except Exception as e:
+            messagebox.showerror(MSG["app_title"], MSG["game_path_save_error"].format(e))
+            return False
 
 
     def find_game_directory(self, with_exe_path = False, search_value = "REPO"):

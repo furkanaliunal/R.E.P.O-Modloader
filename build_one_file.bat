@@ -1,6 +1,6 @@
 @echo off
 
-pyinstaller --windowed --icon=logo.ico ^
+pyinstaller --onefile --windowed --icon=logo.ico ^
 --add-data "src/background.png;./src" ^
 --add-data "src/settings.png;./src" ^
 --add-data "src/directory.png;./src" ^

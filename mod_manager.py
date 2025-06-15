@@ -1,5 +1,6 @@
 import os
 import requests
+import webbrowser
 import zipfile
 import shutil
 import subprocess
@@ -222,6 +223,14 @@ def fetch_origin_and_reset_local_repo(game_dir, repo_url=MODPACK_REPOSITORY_URL)
     # repo.git.clean('-fd')
     subprocess.run(["git", "clean", "-fd"], shell=False, creationflags=CREATION_FLAGS)
     APP.write_to_text_area(MSG["git_update_completed"])
+
+def is_winhttp_exists(game_dir):
+    dll_path = os.path.join(game_dir, "winhttp.dll")
+    return os.path.isfile(dll_path)
+
+def git_restore(game_dir):
+    os.chdir(game_dir)
+    subprocess.run(["git", "restore", "."], check=True)
 
 def get_git_branch(game_dir):
     prev_dir = os.getcwd()
@@ -761,6 +770,7 @@ class App(tk.Tk):
         if is_available:
             self.write_to_text_area_from_async(MSG["modloader_update_available"])
             self.write_to_text_area_from_async(MSG["modloader_update_download"].format(url), "green")
+            webbrowser.open(url)
         else:
             self.write_to_text_area_from_async(MSG["modloader_uptodate"], "gray")
 

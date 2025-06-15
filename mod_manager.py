@@ -224,13 +224,6 @@ def fetch_origin_and_reset_local_repo(game_dir, repo_url=MODPACK_REPOSITORY_URL)
     subprocess.run(["git", "clean", "-fd"], shell=False, creationflags=CREATION_FLAGS)
     APP.write_to_text_area(MSG["git_update_completed"])
 
-def is_winhttp_exists(game_dir):
-    dll_path = os.path.join(game_dir, "winhttp.dll")
-    return os.path.isfile(dll_path)
-
-def git_restore(game_dir):
-    os.chdir(game_dir)
-    subprocess.run(["git", "restore", "."], check=True)
 
 def get_git_branch(game_dir):
     prev_dir = os.getcwd()
@@ -245,6 +238,29 @@ def get_git_branch(game_dir):
         return None
     finally:
         os.chdir(prev_dir)
+
+
+def is_winhttp_exists(game_dir):
+    prev_dir = os.getcwd()
+    os.chdir(game_dir)
+    dll_path = os.path.join(game_dir, "winhttp.dll")
+    result = os.path.isfile(dll_path)
+    os.chdir(prev_dir)
+    return result
+
+def git_restore_winhttp(game_dir):
+    prev_dir = os.getcwd()
+    os.chdir(game_dir)
+    subprocess.run(["git", "restore", "winhttp.dll"], check=True)
+    os.chdir(prev_dir)
+
+def remove_winhttp(game_dir):
+    prev_dir = os.getcwd()
+    os.chdir(game_dir)
+    dll_path = "winhttp.dll"
+    if os.path.isfile(dll_path):
+        os.remove(dll_path)
+    os.chdir(prev_dir)
 
 def extract_zip(zip_path, extract_to):
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
